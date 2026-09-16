@@ -23,18 +23,34 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
 
-    dut._log.info("Test project behavior")
-
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
-
-    # Wait for one clock cycle to see the output values
+    dut._log.info("Test: no inputs active -> valid should be 0")
+    dut.ui_in.value = 0b00000000
     await ClockCycles(dut.clk, 1)
+    assert dut.uo_out.value == 0b0000_0000  # encoded=0, valid=0
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+    dut._log.info("Test: only bit 0 active -> encoded=0, valid=1")
+    dut.ui_in.value = 0b00000001
+    await ClockCycles(dut.clk, 1)
+    assert dut.uo_out.value == 0b0000_1000  # valid=1, encoded=000
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    dut._log.info("Test: bit 3 active -> encoded=3, valid=1")
+    dut.ui_in.value = 0b00001000
+    await ClockCycles(dut.clk, 1)
+    assert dut.uo_out.value == 0b0000_1011  # valid=1, encoded=011
+
+    dut._log.info("Test: bits 2 and 5 active -> priority picks bit 5, encoded=5")
+    dut.ui_in.value = 0b00100100
+    await ClockCycles(dut.clk, 1)
+    assert dut.uo_out.value == 0b0000_1101  # valid=1, encoded=101
+
+    dut._log.info("Test: highest bit 7 active along with others -> priority picks bit 7, encoded=7")
+    dut.ui_in.value = 0b10000001
+    await ClockCycles(dut.clk, 1)
+    assert dut.uo_out.value == 0b0000_1111  # valid=1, encoded=111
+
+    dut._log.info("Test: all bits active -> priority still picks bit 7, encoded=7")
+    dut.ui_in.value = 0b11111111
+    await ClockCycles(dut.clk, 1)
+    assert dut.uo_out.value == 0b0000_1111  # valid=1, encoded=111
+
+    dut._log.info("All priority encoder tests passed")
